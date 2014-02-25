@@ -1,7 +1,7 @@
 package com.devveri.hive.serde;
 
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hive.serde.Constants;
+import org.apache.hadoop.hive.serde.serdeConstants;
 import org.apache.hadoop.hive.serde2.SerDe;
 import org.apache.hadoop.hive.serde2.SerDeException;
 import org.apache.hadoop.hive.serde2.SerDeStats;
@@ -23,8 +23,8 @@ import java.util.*;
  *
  * @author hakanilter
  */
-public class QueryStringFormatSerDe implements SerDe
-{
+public class QueryStringFormatSerDe implements SerDe {
+
     private static final Logger LOG;
 
     static {
@@ -48,17 +48,16 @@ public class QueryStringFormatSerDe implements SerDe
 
     // Initialize this SerDe with the system properties and table properties
     @Override
-    public void initialize(Configuration sysProps, Properties tblProps) throws SerDeException
-    {
+    public void initialize(Configuration sysProps, Properties tblProps) throws SerDeException {
         LOG.debug("Initializing QueryStringSerDe");
 
         // Get the names of the columns for the table this SerDe is being used
         // with
-        String columnNameProperty = tblProps.getProperty(Constants.LIST_COLUMNS);
+        String columnNameProperty = tblProps.getProperty(serdeConstants.LIST_COLUMNS);
         columnNames = Arrays.asList(columnNameProperty.split(","));
 
         // Convert column types from text to TypeInfo objects
-        String columnTypeProperty = tblProps.getProperty(Constants.LIST_COLUMN_TYPES);
+        String columnTypeProperty = tblProps.getProperty(serdeConstants.LIST_COLUMN_TYPES);
         columnTypes = TypeInfoUtils.getTypeInfosFromTypeString(columnTypeProperty);
         assert columnNames.size() == columnTypes.size();
         numColumns = columnNames.size();
@@ -89,8 +88,7 @@ public class QueryStringFormatSerDe implements SerDe
 
     // Deserialize object into a row for the table
     @Override
-    public Object deserialize(Writable blob) throws SerDeException
-    {
+    public Object deserialize(Writable blob) throws SerDeException {
         Text rowText = (Text) blob;
         String[] values = rowText.toString().split("\t");
         String queryString = values[1];
@@ -104,22 +102,22 @@ public class QueryStringFormatSerDe implements SerDe
         String colName;
         Object value;
         for (int c = 0; c < numColumns; c++) {
-            colName = columnNames.get(c);
+            colName = columnNames.get(c).toLowerCase();
             TypeInfo ti = columnTypes.get(c);
 
             if (!map.containsKey(colName)) {
                 value = null;
-            } else if (ti.getTypeName().equalsIgnoreCase(Constants.DOUBLE_TYPE_NAME)) {
+            } else if (ti.getTypeName().equalsIgnoreCase(serdeConstants.DOUBLE_TYPE_NAME)) {
                 value = Double.parseDouble(map.get(colName));
-            } else if (ti.getTypeName().equalsIgnoreCase(Constants.BIGINT_TYPE_NAME)) {
+            } else if (ti.getTypeName().equalsIgnoreCase(serdeConstants.BIGINT_TYPE_NAME)) {
                 value = Long.parseLong(map.get(colName));
-            } else if (ti.getTypeName().equalsIgnoreCase(Constants.INT_TYPE_NAME)) {
+            } else if (ti.getTypeName().equalsIgnoreCase(serdeConstants.INT_TYPE_NAME)) {
                 value = Integer.parseInt(map.get(colName));
-            } else if (ti.getTypeName().equalsIgnoreCase(Constants.TINYINT_TYPE_NAME)) {
+            } else if (ti.getTypeName().equalsIgnoreCase(serdeConstants.TINYINT_TYPE_NAME)) {
                 value = Byte.parseByte(map.get(colName));
-            } else if (ti.getTypeName().equalsIgnoreCase(Constants.FLOAT_TYPE_NAME)) {
+            } else if (ti.getTypeName().equalsIgnoreCase(serdeConstants.FLOAT_TYPE_NAME)) {
                 value = Float.parseFloat(map.get(colName));
-            } else if (ti.getTypeName().equalsIgnoreCase(Constants.BOOLEAN_TYPE_NAME)) {
+            } else if (ti.getTypeName().equalsIgnoreCase(serdeConstants.BOOLEAN_TYPE_NAME)) {
                 value = Boolean.parseBoolean(map.get(colName));
             } else {
                 value = map.get(colName);
@@ -137,8 +135,7 @@ public class QueryStringFormatSerDe implements SerDe
 
     // Serializes a row of data into a query string
     @Override
-    public Writable serialize(Object obj, ObjectInspector objInspector) throws SerDeException
-    {
+    public Writable serialize(Object obj, ObjectInspector objInspector) throws SerDeException {
         LOG.info(obj.toString());
         LOG.info(objInspector.toString());
 
@@ -152,15 +149,18 @@ public class QueryStringFormatSerDe implements SerDe
     }
 
     // Parses query string into a map
-    private Map<String, String> getQueryMap(String query)
-    {
+    private Map<String, String> getQueryMap(String query) {
         String[] params = query.split("&");
         Map<String, String> map = new HashMap<String, String>();
         for (String param : params) {
-            String name = param.split("=")[0];
-            String value = param.split("=")[1];
-            map.put(name, value);
+            String[] values = param.split("=");
+            if (values.length == 2) {
+                String name = values[0].toLowerCase();
+                String value = values[1];
+                map.put(name, value);
+            }
         }
         return map;
     }
+
 }
