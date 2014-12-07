@@ -15,6 +15,8 @@ import org.apache.hadoop.io.Writable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.UnsupportedEncodingException;
+import java.net.URLDecoder;
 import java.util.*;
 
 /**
@@ -92,7 +94,10 @@ public class QueryStringFormatSerDe implements SerDe {
         Text rowText = (Text) blob;
         String[] values = rowText.toString().split("\t");
         String queryString = values[1];
-        LOG.debug("Deserialize row: " + queryString);
+
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("Deserialize row: " + queryString);
+        }
 
         // create a map from log string
         Map<String, String> map = getQueryMap(queryString);
@@ -120,7 +125,7 @@ public class QueryStringFormatSerDe implements SerDe {
             } else if (ti.getTypeName().equalsIgnoreCase(serdeConstants.BOOLEAN_TYPE_NAME)) {
                 value = Boolean.parseBoolean(map.get(colName));
             } else {
-                value = map.get(colName);
+                value = decode(map.get(colName));
             }
             row.set(c, value);
         }
@@ -144,7 +149,6 @@ public class QueryStringFormatSerDe implements SerDe {
 
     @Override
     public SerDeStats getSerDeStats() {
-        // TODO Auto-generated method stub
         return null;
     }
 
@@ -161,6 +165,18 @@ public class QueryStringFormatSerDe implements SerDe {
             }
         }
         return map;
+    }
+
+    private String decode(String value) {
+        if (value == null) {
+            return null;
+        }
+        try {
+            return URLDecoder.decode(value, "UTF-8");
+        } catch (UnsupportedEncodingException e) {
+            LOG.warn("invalid encoding", e);
+            return value;
+        }
     }
 
 }
